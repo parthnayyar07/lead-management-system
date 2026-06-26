@@ -1,8 +1,7 @@
 import os
 import uuid
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import json
+import urllib.request
 from datetime import datetime
 
 from flask import Flask, request, redirect, render_template, jsonify, Response
@@ -22,8 +21,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True, "pool_recycle": 280}
 db = SQLAlchemy(app)
 
-EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:5000")
 DESTINATION_LINK = "https://www.google.com"
 
@@ -76,36 +74,42 @@ def classify_requirement(text):
 
 
 def send_lead_email(lead):
-    if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        print("WARNING: Email not configured - skipping send")
+    if not RESEND_API_KEY:
+        print("WARNING: RESEND_API_KEY not set")
         return False
 
     tracking_pixel_url = f"{BASE_URL}/track/open/{lead.tracking_id}"
     tracking_click_url = f"{BASE_URL}/track/click/{lead.tracking_id}"
 
     html_body = f"""
-    <html>
-      <body>
-        <p>Hi {lead.name},</p>
-        <p>Thank you for reaching out.</p>
-        <p>We received your requirement: "{lead.requirement}"</p>
-        <p><a href="{tracking_click_url}">Learn more</a></p>
-        <p>Regards,<br>Team</p>
-        <img src="{tracking_pixel_url}" width="1" height="1" style="display:none;">
-      </body>
-    </html>
+    <p>Hi {lead.name},</p>
+    <p>Thank you for reaching out.</p>
+    <p>We received your requirement: "{lead.requirement}"</p>
+    <p><a href="{tracking_click_url}">Learn more</a></p>
+    <p>Regards,<br>Team</p>
+    <img src="{tracking_pixel_url}" width="1" height="1" style="display:none;">
     """
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Thanks for reaching out!"
-    msg["From"] = EMAIL_ADDRESS
-    msg["To"] = lead.email
-    msg.attach(MIMEText(html_body, "html"))
+    payload = json.dumps({
+        "from": "onboarding@resend.dev",
+        "to": [lead.email],
+        "subject": "Thanks for reaching out!",
+        "html": html_body
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.sendmail(EMAIL_ADDRESS, lead.email, msg.as_string())
+        with urllib.request.urlopen(req, timeout=10) as response:
+            print(response.read())
         return True
     except Exception as e:
         print(f"Email send failed: {e}")
