@@ -22,14 +22,12 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True, "pool_recycle": 280}
 db = SQLAlchemy(app)
 
-# --- CONFIG: set these as environment variables ---
-EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")        # your gmail address
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")      # gmail App Password (16 chars, no spaces)
-BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:5000")  # update after deploy
-DESTINATION_LINK = "https://www.google.com"  # the "Learn more" link target
+EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:5000")
+DESTINATION_LINK = "https://www.google.com"
 
 
-# --- DATABASE MODEL ---
 class Lead(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
@@ -52,7 +50,6 @@ with app.app_context():
     db.create_all()
 
 
-# --- SIMPLE AI-STYLE CLASSIFIER (rule-based, fast, no API key needed) ---
 def classify_requirement(text):
     text_lower = text.lower()
 
@@ -78,10 +75,9 @@ def classify_requirement(text):
     return category, priority
 
 
-# --- EMAIL SENDING ---
 def send_lead_email(lead):
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        print("WARNING: Email not configured - skipping send (set EMAIL_ADDRESS / EMAIL_PASSWORD)")
+        print("WARNING: Email not configured - skipping send")
         return False
 
     tracking_pixel_url = f"{BASE_URL}/track/open/{lead.tracking_id}"
@@ -107,7 +103,7 @@ def send_lead_email(lead):
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.sendmail(EMAIL_ADDRESS, lead.email, msg.as_string())
         return True
@@ -115,8 +111,6 @@ def send_lead_email(lead):
         print(f"Email send failed: {e}")
         return False
 
-
-# --- ROUTES ---
 
 @app.route("/")
 def home():
@@ -144,7 +138,11 @@ def submit():
     db.session.add(lead)
     db.session.commit()
 
-    sent = send_lead_email(lead)
+    try:
+        sent = send_lead_email(lead)
+    except Exception as e:
+        print(f"Email sending crashed: {e}")
+        sent = False
     lead.email_sent = sent
     db.session.commit()
 
@@ -158,7 +156,6 @@ def track_open(tracking_id):
         lead.email_opened = True
         db.session.commit()
 
-    # 1x1 transparent GIF
     pixel = bytes.fromhex(
         "47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002023b"
     )
