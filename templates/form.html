@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Get in Touch</title>
+  <style>
+    body { font-family: -apple-system, Arial, sans-serif; background:#f4f5f7; display:flex; justify-content:center; padding:40px 20px; }
+    .card { background:#fff; padding:2rem; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.08); width:100%; max-width:480px; }
+    h1 { margin-top:0; }
+    label { display:block; margin-top:1rem; font-weight:600; font-size:0.9rem; }
+    input, textarea { width:100%; padding:0.6rem; margin-top:0.3rem; border:1px solid #ddd; border-radius:6px; font-size:0.95rem; box-sizing:border-box; }
+    button { margin-top:1.5rem; width:100%; padding:0.75rem; background:#4f46e5; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:1rem; }
+    button:hover { background:#4338ca; }
+    a { color:#4f46e5; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Get in Touch</h1>
+    <p>Fill out the form and we'll reach out shortly.</p>
+    <form action="/submit" method="POST">
+      <label>Full Name *</label>
+      <input type="text" name="name" required>
+
+      <label>Email Address *</label>
+      <input type="email" name="email" required>
+
+      <label>Phone Number *</label>
+      <input type="tel" name="phone" required>
+
+      <label>Company Name</label>
+      <input type="text" name="company">
+
+      <label>Requirement / Message *</label>
+      <textarea name="requirement" rows="4" required></textarea>
+
+      <button type="submit">Submit</button>
+    </form>
+    <p style="margin-top:1.5rem; font-size:0.85rem;"><a href="/dashboard">View Dashboard →</a></p>
+  </div>
+</body>
+</html>
